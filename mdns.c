@@ -31,6 +31,13 @@
 #undef recvfrom
 #endif
 
+#ifdef _MSC_VER
+#define MDNS_EXPORT __declspec(dllexport)
+#else
+#define MDNS_EXPORT                                                        \
+  __attribute__((visibility("default"))) __attribute__((used))
+#endif
+
 static char addrbuffer[64];
 static char entrybuffer[256];
 static char namebuffer[256];
@@ -61,8 +68,8 @@ typedef struct {
 	mdns_record_t txt_record[2];
 } service_t;
 
-static mdns_string_t
-ipv4_address_to_string(char* buffer, size_t capacity, const struct sockaddr_in* addr,
+mdns_string_t MDNS_EXPORT
+    ipv4_address_to_string(char* buffer, size_t capacity, const struct sockaddr_in* addr,
                        size_t addrlen) {
 	char host[NI_MAXHOST] = {0};
 	char service[NI_MAXSERV] = {0};
@@ -83,8 +90,8 @@ ipv4_address_to_string(char* buffer, size_t capacity, const struct sockaddr_in* 
 	return str;
 }
 
-static mdns_string_t
-ipv6_address_to_string(char* buffer, size_t capacity, const struct sockaddr_in6* addr,
+mdns_string_t MDNS_EXPORT
+    ipv6_address_to_string(char* buffer, size_t capacity, const struct sockaddr_in6* addr,
                        size_t addrlen) {
 	char host[NI_MAXHOST] = {0};
 	char service[NI_MAXSERV] = {0};
@@ -105,16 +112,16 @@ ipv6_address_to_string(char* buffer, size_t capacity, const struct sockaddr_in6*
 	return str;
 }
 
-static mdns_string_t
-ip_address_to_string(char* buffer, size_t capacity, const struct sockaddr* addr, size_t addrlen) {
+mdns_string_t MDNS_EXPORT
+    ip_address_to_string(char* buffer, size_t capacity, const struct sockaddr* addr, size_t addrlen) {
 	if (addr->sa_family == AF_INET6)
 		return ipv6_address_to_string(buffer, capacity, (const struct sockaddr_in6*)addr, addrlen);
 	return ipv4_address_to_string(buffer, capacity, (const struct sockaddr_in*)addr, addrlen);
 }
 
 // Callback handling parsing answers to queries sent
-static int
-query_callback(int sock, const struct sockaddr* from, size_t addrlen, mdns_entry_type_t entry,
+int MDNS_EXPORT
+    query_callback(int sock, const struct sockaddr* from, size_t addrlen, mdns_entry_type_t entry,
                uint16_t query_id, uint16_t rtype, uint16_t rclass, uint32_t ttl, const void* data,
                size_t size, size_t name_offset, size_t name_length, size_t record_offset,
                size_t record_length, void* user_data) {
@@ -177,8 +184,8 @@ query_callback(int sock, const struct sockaddr* from, size_t addrlen, mdns_entry
 }
 
 // Callback handling questions incoming on service sockets
-static int
-service_callback(int sock, const struct sockaddr* from, size_t addrlen, mdns_entry_type_t entry,
+int MDNS_EXPORT
+    service_callback(int sock, const struct sockaddr* from, size_t addrlen, mdns_entry_type_t entry,
                  uint16_t query_id, uint16_t rtype, uint16_t rclass, uint32_t ttl, const void* data,
                  size_t size, size_t name_offset, size_t name_length, size_t record_offset,
                  size_t record_length, void* user_data) {
@@ -409,8 +416,8 @@ service_callback(int sock, const struct sockaddr* from, size_t addrlen, mdns_ent
 }
 
 // Callback handling questions and answers dump
-static int
-dump_callback(int sock, const struct sockaddr* from, size_t addrlen, mdns_entry_type_t entry,
+int MDNS_EXPORT
+    dump_callback(int sock, const struct sockaddr* from, size_t addrlen, mdns_entry_type_t entry,
               uint16_t query_id, uint16_t rtype, uint16_t rclass, uint32_t ttl, const void* data,
               size_t size, size_t name_offset, size_t name_length, size_t record_offset,
               size_t record_length, void* user_data) {
@@ -450,8 +457,8 @@ dump_callback(int sock, const struct sockaddr* from, size_t addrlen, mdns_entry_
 }
 
 // Open sockets for sending one-shot multicast queries from an ephemeral port
-static int
-open_client_sockets(int* sockets, int max_sockets, int port) {
+int MDNS_EXPORT
+	open_client_sockets(int* sockets, int max_sockets, int port) {
 	// When sending, each socket can only send to one network interface
 	// Thus we need to open one socket for each interface and address family
 	int num_sockets = 0;
@@ -654,8 +661,8 @@ open_client_sockets(int* sockets, int max_sockets, int port) {
 }
 
 // Open sockets to listen to incoming mDNS queries on port 5353
-static int
-open_service_sockets(int* sockets, int max_sockets) {
+int MDNS_EXPORT
+	open_service_sockets(int* sockets, int max_sockets) {
 	// When recieving, each socket can recieve data from all network interfaces
 	// Thus we only need to open one socket for each address family
 	int num_sockets = 0;
@@ -700,8 +707,8 @@ open_service_sockets(int* sockets, int max_sockets) {
 }
 
 // Send a DNS-SD query
-static int
-send_dns_sd(void) {
+int MDNS_EXPORT
+	send_dns_sd(void) {
 	int sockets[32];
 	int num_sockets = open_client_sockets(sockets, sizeof(sockets) / sizeof(sockets[0]), 0);
 	if (num_sockets <= 0) {
@@ -760,8 +767,8 @@ send_dns_sd(void) {
 }
 
 // Send a mDNS query
-static int
-send_mdns_query(mdns_query_t* query, size_t count) {
+int MDNS_EXPORT
+	send_mdns_query(mdns_query_t* query, size_t count) {
 	int sockets[32];
 	int query_id[32];
 	int num_sockets = open_client_sockets(sockets, sizeof(sockets) / sizeof(sockets[0]), 0);
@@ -840,8 +847,8 @@ send_mdns_query(mdns_query_t* query, size_t count) {
 }
 
 // Provide a mDNS service, answering incoming DNS-SD and mDNS queries
-static int
-service_mdns(const char* hostname, const char* service_name, int service_port) {
+int MDNS_EXPORT
+    service_mdns(const char* hostname, const char* service_name, int service_port) {
 	int sockets[32];
 	int num_sockets = open_service_sockets(sockets, sizeof(sockets) / sizeof(sockets[0]));
 	if (num_sockets <= 0) {
@@ -1020,7 +1027,7 @@ service_mdns(const char* hostname, const char* service_name, int service_port) {
 
 
 // Dump all incoming mDNS queries and answers
-static int
+int MDNS_EXPORT
 dump_mdns(void) {
 	int sockets[32];
 	int num_sockets = open_service_sockets(sockets, sizeof(sockets) / sizeof(sockets[0]));

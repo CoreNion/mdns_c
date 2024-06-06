@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(mdns VERSION 1.4.2 LANGUAGES C)
 
-option(MDNS_BUILD_EXAMPLE "build example" ON)
+option(MDNS_BUILD_EXAMPLE "build example" OFF)
 
 # Set the output of the libraries and executables.
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
@@ -31,6 +31,9 @@ if(MDNS_BUILD_EXAMPLE)
   add_executable(${PROJECT_NAME}_example mdns.c)
   target_link_libraries(${PROJECT_NAME}_example ${PROJECT_NAME})
 endif()
+
+add_library(${PROJECT_NAME}_lib SHARED mdns.c)
+target_link_libraries(${PROJECT_NAME}_lib ${PROJECT_NAME})
 
 # ##############################################################################
 # install
